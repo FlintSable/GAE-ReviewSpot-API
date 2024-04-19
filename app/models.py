@@ -9,7 +9,7 @@ class Business:
         entity = datastore.Entity(key=key)
         entity.update(data)
         client.put(entity)
-        return entity
+        return entity.key.id, entity
     
     @staticmethod
     def get(business_id):
