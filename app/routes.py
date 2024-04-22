@@ -117,7 +117,7 @@ def register_routes(app):
     @app.route('/reviews/<int:review_id>', methods=['PUT'])
     def update_review(review_id):
         data = request.get_json()
-        required_fields = ['stars']  # Adjust based on actual requirements
+        required_fields = ['stars']
 
         if not all(field in data for field in required_fields):
             return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
