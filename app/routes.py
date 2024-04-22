@@ -1,7 +1,13 @@
+# from flask import request, jsonify
+# from .models import Business, Review
 from flask import request, jsonify
-from models import Business, Review
+from .models import Business, Review
 
 def register_routes(app):
+
+    @app.route('/')
+    def index():
+        return "Welcome to the ReviewSpot API!"
 
     @app.route('/owners/<int:owner_id>/businesses', methods=['GET'])
     def list_businesses_for_owner(owner_id):
@@ -59,12 +65,23 @@ def register_routes(app):
 
     @app.route('/businesses/<int:business_id>', methods=['DELETE'])
     def delete_business(business_id):
-        success = Business.delete(business_id)
-        if not success:
-            # Business not found, return 404
-            return jsonify({"Error": "No business with this business_id exists"}), 404
-        # Business found and deleted, return 204
-        return '', 204
+        try:
+            # First, check if the business exists
+            if not Business.exists(business_id):
+                return jsonify({"Error": "No business with this business_id exists"}), 404
+
+            # Delete all reviews associated with the business
+            Review.delete_by_business(business_id)
+
+            # If the business exists, proceed to delete it
+            if Business.delete(business_id):
+                return '', 204  # Return 204 No Content if deletion is successful
+            else:
+                return jsonify({"Error": "Failed to delete business"}), 500  # In case deletion fails
+        except Exception as e:
+            # Capture any unexpected errors and log them
+            print(f"An error occurred: {e}")
+            return jsonify({"Error": "Internal Server Error"}), 500
 
     @app.route('/reviews', methods=['POST'])
     def create_review():
@@ -78,7 +95,7 @@ def register_routes(app):
             return jsonify({"Error": "No business with this business_id exists"}), 404
 
         # Additional validation to check if a review already exists
-        if Review.exists(data['user_id'], data['business_id']):
+        if Review.exists_by_user_business(data['user_id'], data['business_id']):
             return jsonify({"Error": "You have already submitted a review for this business. You can update your previous review, or delete it and submit a new review"}), 409
 
         review_id = Review.create(data)
@@ -100,7 +117,7 @@ def register_routes(app):
     @app.route('/reviews/<int:review_id>', methods=['PUT'])
     def update_review(review_id):
         data = request.get_json()
-        required_fields = ['stars']  # Adjust based on actual requirements
+        required_fields = ['stars']
 
         if not all(field in data for field in required_fields):
             return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
@@ -114,16 +131,14 @@ def register_routes(app):
     @app.route('/reviews/<int:review_id>', methods=['DELETE'])
     def delete_review(review_id):
         try:
-            if not Review.exists(review_id):
+            if not Review.exists_by_id(review_id):
                 return jsonify({"Error": "No review with this review_id exists"}), 404
 
-            # If it exists, proceed to delete it
             if Review.delete(review_id):
                 return '', 204  # Return 204 No Content if deletion is successful
             else:
                 return jsonify({"Error": "Failed to delete review"}), 500  # In case deletion fails
         except Exception as e:
-            # Capture any unexpected errors and log them
             print(f"An error occurred: {e}")
             return jsonify({"Error": "Internal Server Error"}), 500
 

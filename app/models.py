@@ -83,10 +83,18 @@ class Review:
         return entity.key.id
 
     @staticmethod
-    def exists(user_id, business_id):
-        key = client.query(kind='Review')
-        key.add_filter('user_id', '=', user_id)
-        key.add_filter('business_id', '=', business_id)
+    def exists_by_id(review_id):
+        client = datastore.Client()
+        key = client.key('Review', review_id)
+        entity = client.get(key)
+        return bool(entity)
+
+    @staticmethod
+    def exists_by_user_business(user_id, business_id):
+        client = datastore.Client()
+        query = client.query(kind='Review')
+        query.add_filter('user_id', '=', user_id)
+        query.add_filter('business_id', '=', business_id)
         results = list(query.fetch())
         return len(results) > 0
 
@@ -116,14 +124,23 @@ class Review:
 
     @staticmethod
     def delete(review_id):
-        client = datastore.Client()
+        # client = datastore.Client()
         key = client.key('Review', review_id)
         try:
             entity = client.get(key)
             if not entity:
                 return False  # No entity found, return False
             client.delete(key)
-            return True  # Successfully deleted
+            return not Review.exists_by_id(review_id)  # Successfully deleted
         except Exception as e:
             print(f"Failed to delete review: {e}")
-            return False  # In case of any exception, return False
+            return False
+
+    @staticmethod
+    def delete_by_business(business_id):
+        query = client.query(kind='Review')
+        query.keys_only()
+        query.add_filter('business_id', '=', business_id)
+        keys = list(query.fetch())
+        for key in keys:
+            client.delete(key)
